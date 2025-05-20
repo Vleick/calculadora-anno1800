@@ -1,123 +1,82 @@
 import streamlit as st
 import math
 
-st.set_page_config(page_title="Calculadora Anno 1800", layout="centered")
-st.title("🧮 Calculadora de Producción - Anno 1800 (Viejo Mundo)")
+st.set_page_config(page_title="Calculadora Anno 1800", layout="wide")
+st.title("🧮 Calculadora de Producción - Anno 1800 (Todas las regiones)")
 
 st.markdown("""
-Calculadora de producción para *Anno 1800* basada únicamente en bienes disponibles en el **Viejo Mundo** hasta el nivel de **artesanos**.  
-No se incluyen productos del Nuevo Mundo ni DLC.  
+Esta calculadora cubre las necesidades de producción para **todas las regiones** del juego base y DLCs:
+- 🏙️ Viejo Mundo
+- 🌴 Nuevo Mundo
+- 🌞 Enbesa
+- ❄️ Ártico
+Incluye **interdependencias regionales**.
 """)
 
-# Entradas
-campesinos = st.number_input("👨‍🌾 Campesinos", 0, step=100, value=200)
-obreros = st.number_input("🔧 Obreros", 0, step=100, value=200)
-artesanos = st.number_input("🎩 Artesanos", 0, step=100, value=200)
-
-st.markdown("---")
-
-# Función genérica
+# Función genérica de cálculo
 def calcular(consumo_por_hab, n_habs, prod_por_min):
     total = n_habs * consumo_por_hab
     return math.ceil(total / prod_por_min)
 
-# Resultados por categoría
-st.header("📦 Resultados de producción")
+# Tabs por región
+tab_vm, tab_nm, tab_enbesa, tab_artico = st.tabs(["🏙️ Viejo Mundo", "🌴 Nuevo Mundo", "🌞 Enbesa", "❄️ Ártico"])
 
-# ====================
-# CAMPESINOS
-# ====================
-st.subheader("👨‍🌾 Campesinos")
+# ================= VIEJO MUNDO ====================
+with tab_vm:
+    st.header("🏙️ Viejo Mundo")
+    campesinos = st.number_input("Campesinos", 0, step=100, value=200)
+    obreros = st.number_input("Obreros", 0, step=100, value=200)
+    artesanos = st.number_input("Artesanos", 0, step=100, value=200)
+    ingenieros = st.number_input("Ingenieros", 0, step=100, value=200)
 
-ropa = calcular(0.017, campesinos, 2)
-st.write(f"🧥 **Ropa de trabajo**")
-st.write(f"- 🐑 Granjas de ovejas: {ropa}")
-st.write(f"- 🧵 Sastrerías: {ropa}")
+    st.subheader("Productos locales")
+    panaderias = calcular(0.017, obreros, 1)
+    st.write(f"🍞 Panaderías necesarias: {panaderias}")
 
-pescado = calcular(0.017, campesinos, 1)
-st.write(f"🐟 **Pescado**")
-st.write(f"- 🎣 Pesquerías: {pescado}")
+    st.subheader("Productos importados")
+    cafe = calcular(0.0085, ingenieros, 1)
+    st.write(f"☕ Café necesario (producido en el 🌴 Nuevo Mundo): {cafe} unidades/minuto")
 
-schnapps = calcular(0.017, campesinos, 1)
-st.write(f"🥔 **Schnapps**")
-st.write(f"- 🌱 Granjas de patatas: {schnapps}")
-st.write(f"- 🥃 Destilerías: {schnapps}")
+# ================= NUEVO MUNDO ====================
+with tab_nm:
+    st.header("🌴 Nuevo Mundo")
+    jornaleros = st.number_input("Jornaleros", 0, step=100, value=200)
+    obreros_nuevo = st.number_input("Obreros (N. Mundo)", 0, step=100, value=200)
 
-madera = calcular(0.017, campesinos, 4)  # Serrería produce 4/minuto
-st.write(f"🪵 **Madera**")
-st.write(f"- 🌲 Leñadores: {madera}")
-st.write(f"- 🪚 Serrerías: {madera}")
+    st.subheader("Productos locales")
+    cafe_nm = calcular(0.0085, jornaleros, 1)
+    st.write(f"☕ Plantaciones de café: {cafe_nm}")
 
-# ====================
-# OBREROS
-# ====================
-st.subheader("🔧 Obreros")
+    st.subheader("Exportación")
+    st.write(f"🚢 Puedes exportar hasta {cafe_nm} unidades/minuto de café al 🏙️ Viejo Mundo")
 
-salchichas = calcular(0.017, obreros, 1)
-st.write(f"🌭 **Salchichas**")
-st.write(f"- 🐖 Granjas de cerdos: {salchichas}")
-st.write(f"- 🪓 Mataderos: {salchichas}")
-st.write(f"- 🏭 Fábricas de salchichas: {salchichas}")
+# ================= ENBESA ====================
+with tab_enbesa:
+    st.header("🌞 Enbesa")
+    ancianos = st.number_input("Ancianos", 0, step=100, value=200)
+    sabios = st.number_input("Sabios", 0, step=100, value=200)
 
-pan = calcular(0.017, obreros, 1)
-st.write(f"🍞 **Pan**")
-st.write(f"- 🌾 Granjas de trigo: {pan}")
-st.write(f"- 🌀 Molinos: {pan}")
-st.write(f"- 🍞 Panaderías: {pan}")
+    st.subheader("Productos locales")
+    injera = calcular(0.017, ancianos, 1)
+    st.write(f"🍽️ Producción de Injera: {injera}")
 
-jabon = calcular(0.0085, obreros, 1)
-st.write(f"🧼 **Jabón**")
-st.write(f"- 🐖 Granjas de cerdos (grasa): {jabon}")
-st.write(f"- 🧪 Fábricas de sosa cáustica: {jabon}")
-st.write(f"- 🧼 Fábricas de jabón: {jabon}")
+    st.subheader("Productos importados")
+    herramientas = calcular(0.0085, sabios, 1)
+    st.write(f"🛠️ Herramientas necesarias desde 🏙️ Viejo Mundo: {herramientas} unidades/minuto")
 
-cerveza = calcular(0.0085, obreros, 1)
-st.write(f"🍺 **Cerveza**")
-st.write(f"- 🌿 Granjas de lúpulo: {cerveza}")
-st.write(f"- 🌾 Granjas de cebada: {cerveza}")
-st.write(f"- 🏭 Malterías: {cerveza}")
-st.write(f"- 🍺 Cervecerías: {cerveza}")
+# ================= ÁRTICO ====================
+with tab_artico:
+    st.header("❄️ Ártico")
+    exploradores = st.number_input("Exploradores", 0, step=100, value=200)
+    tecnicos = st.number_input("Técnicos", 0, step=100, value=200)
 
-velas = calcular(0.0085, obreros, 1)
-st.write(f"🕯️ **Velas**")
-st.write(f"- 🧵 Granjas de lino: {velas}")
-st.write(f"- 🪵 Madera: {velas}")
-st.write(f"- 🕯️ Fábricas de velas: {velas}")
+    st.subheader("Productos locales")
+    aceite = calcular(0.017, exploradores, 1)
+    st.write(f"🛢️ Estufas de aceite: {aceite}")
 
-acero = calcular(0.0085, obreros, 1)
-st.write(f"🔩 **Vigas de acero**")
-st.write(f"- ⛏️ Minas de hierro: {acero}")
-st.write(f"- 🔥 Fundiciones: {acero}")
-st.write(f"- 🏗️ Fábricas de vigas: {acero}")
-
-# ====================
-# ARTESANOS
-# ====================
-st.subheader("🎩 Artesanos")
-
-conservas = calcular(0.0085, artesanos, 1)
-st.write(f"🥫 **Conservas**")
-st.write(f"- 🐄 Granjas de ganado: {conservas}")
-st.write(f"- 🌶️ Granjas de pimientos: {conservas}")
-st.write(f"- 🍳 Cocinas artesanales: {conservas}")
-st.write(f"- 🏭 Fábricas de conservas: {conservas}")
-
-ventanas = calcular(0.0085, artesanos, 1)
-st.write(f"🪟 **Ventanas**")
-st.write(f"- 🏖️ Minas de arena: {ventanas}")
-st.write(f"- 🔬 Fábricas de vidrio: {ventanas}")
-st.write(f"- 🪟 Fábricas de ventanas: {ventanas}")
-
-maquinas = calcular(0.0085, artesanos, 1)
-st.write(f"🧵 **Máquinas de coser**")
-st.write(f"- 🪵 Madera: {maquinas}")
-st.write(f"- 🔩 Acero: {maquinas}")
-st.write(f"- 🧵 Fábricas de máquinas: {maquinas}")
-
-abrigos = calcular(0.0085, artesanos, 1)
-st.write(f"🧥 **Abrigos de piel**")
-st.write(f"- 🦌 Cabañas de cazadores: {abrigos}")
-st.write(f"- 🧵 Sastrerías de lujo: {abrigos}")
+    st.subheader("Productos importados")
+    abrigos = calcular(0.0085, tecnicos, 1)
+    st.write(f"🧥 Abrigos importados desde 🌞 Enbesa o 🏙️ Viejo Mundo: {abrigos} unidades/minuto")
 
 st.markdown("---")
-st.caption("Hecho con ❤️ para fans de Anno 1800")
+st.caption("Versión inicial multi-región con lógica interdependiente básica. Se puede expandir con nuevas cadenas, ratios personalizados y optimización por electricidad.")
