@@ -1,6 +1,6 @@
 import streamlit as st
 import math
-import json
+from collections import defaultdict
 
 st.set_page_config(page_title="Calculadora Anno 1800", layout="wide")
 st.title("🧮 Calculadora de Producción - Anno 1800 (Todas las regiones)")
@@ -11,11 +11,11 @@ Esta calculadora cubre las necesidades de producción para **todas las regiones*
 - 🌴 Nuevo Mundo
 - 🌞 Enbesa
 - ❄️ Ártico
-Incluye **interdependencias regionales**.
+Incluye **interdependencias regionales**, exportaciones y materiales avanzados como los necesarios para dirigibles.
 """)
 
 # =====================================
-# 🔽 Datos simulados (futura carga JSON)
+# 🔽 Productos embebidos directamente en el código
 # =====================================
 productos = {
     "viejo_mundo": {
@@ -39,6 +39,8 @@ productos = {
             "abrigos de piel": {"consumo": 0.0085, "produccion": 1, "emoji": "🧥"}
         },
         "ingenieros": {
+            "bombillas": {"consumo": 0.0085, "produccion": 1, "emoji": "💡"},
+            "teléfonos": {"consumo": 0.0085, "produccion": 1, "emoji": "📞"},
             "café": {"consumo": 0.0085, "produccion": 0, "emoji": "☕", "importado_de": "nuevo_mundo"}
         }
     },
@@ -46,11 +48,13 @@ productos = {
         "jornaleros": {
             "platano": {"consumo": 0.017, "produccion": 1, "emoji": "🍌"},
             "café": {"consumo": 0.0085, "produccion": 1, "emoji": "☕"},
-            "algodón": {"consumo": 0.017, "produccion": 1, "emoji": "🧵"}
+            "algodón": {"consumo": 0.017, "produccion": 1, "emoji": "🧵"},
+            "caucho": {"consumo": 0.0085, "produccion": 1, "emoji": "🌿"}
         },
         "obreros": {
             "cacao": {"consumo": 0.0085, "produccion": 1, "emoji": "🍫"},
-            "ron": {"consumo": 0.0085, "produccion": 1, "emoji": "🥃"}
+            "ron": {"consumo": 0.0085, "produccion": 1, "emoji": "🥃"},
+            "motores": {"consumo": 0.0085, "produccion": 1, "emoji": "⚙️"}
         }
     },
     "enbesa": {
@@ -79,46 +83,64 @@ productos = {
 # =====================================
 # 🔧 Función de cálculo genérico
 # =====================================
-def calcular(consumo_por_hab, n_habs, produccion):
+def calcular(consumo_por_hab, n_habs):
+    return consumo_por_hab * n_habs
+
+def calcular_edificios(total_demanda, produccion):
     if produccion == 0:
-        return n_habs * consumo_por_hab  # solo consumo si es importado
-    total = n_habs * consumo_por_hab
-    return math.ceil(total / produccion)
+        return total_demanda
+    return math.ceil(total_demanda / produccion)
+
+# Estructura para recolectar demandas cruzadas
+importaciones_necesarias = defaultdict(lambda: defaultdict(float))
+poblaciones_regionales = {}
+
+def registrar_importacion(origen, producto, cantidad):
+    importaciones_necesarias[origen][producto] += cantidad
 
 # =====================================
-# Tabs de regiones
+# Función general para mostrar región
 # =====================================
-tabs = st.tabs(["🏙️ Viejo Mundo", "🌴 Nuevo Mundo", "🌞 Enbesa", "❄️ Ártico"])
-
-# Función general para cada región
-def mostrar_region(nombre_region, clases):
+def mostrar_region(nombre_region, region_key):
     st.header(f"{nombre_region}")
     poblaciones = {}
-    region_key = nombre_region.split(" ")[1].lower()
+    poblaciones_regionales[region_key] = {}
+
     for clase in productos[region_key]:
-        poblaciones[clase] = st.number_input(f"{clase.capitalize()}", 0, step=100, value=200)
+        n = st.number_input(f"{clase.capitalize()} ({region_key})", 0, step=100, value=200)
+        poblaciones[clase] = n
+        poblaciones_regionales[region_key][clase] = n
 
     st.subheader("Productos locales")
     for clase, productos_clase in productos[region_key].items():
         for nombre, info in productos_clase.items():
+            demanda_local = calcular(info["consumo"], poblaciones[clase])
+
             if "importado_de" in info:
+                registrar_importacion(info["importado_de"], nombre, demanda_local)
                 continue
-            cantidad = calcular(info["consumo"], poblaciones[clase], info["produccion"])
-            st.write(f"{info['emoji']} {nombre.capitalize()}: {cantidad}")
 
-    st.subheader("Productos importados")
-    for clase, productos_clase in productos[region_key].items():
-        for nombre, info in productos_clase.items():
-            if "importado_de" in info:
-                cantidad = calcular(info["consumo"], poblaciones[clase], 0)
-                origen = info.get("importado_de", "otra región")
-                st.write(f"{info['emoji']} {nombre.capitalize()} (de {origen.replace('_', ' ')}): {cantidad} unidades/minuto")
+            demanda_externa = importaciones_necesarias[region_key][nombre]
+            demanda_total = demanda_local + demanda_externa
+            edificios = calcular_edificios(demanda_total, info["produccion"])
 
-# Mostrar cada región
-titulos = ["🏙️ Viejo Mundo", "🌴 Nuevo Mundo", "🌞 Enbesa", "❄️ Ártico"]
+            extra = f" (+{round(demanda_externa, 2)} externas)" if demanda_externa else ""
+            st.write(f"{info['emoji']} {nombre.capitalize()}: {edificios} edificio(s) para {round(demanda_total, 2)} unidad/minuto{extra}")
+
+    if region_key in importaciones_necesarias and importaciones_necesarias[region_key]:
+        st.subheader("📦 Productos que debes exportar a otras regiones")
+        for producto, cantidad in importaciones_necesarias[region_key].items():
+            st.write(f"🚢 {producto.capitalize()}: {round(cantidad, 2)} unidad/minuto")
+
+# =====================================
+# Tabs por región y renderizado
+# =====================================
+tabs = st.tabs(["🏙️ Viejo Mundo", "🌴 Nuevo Mundo", "🌞 Enbesa", "❄️ Ártico"])
+region_keys = ["viejo_mundo", "nuevo_mundo", "enbesa", "artico"]
+
 for i, tab in enumerate(tabs):
     with tab:
-        mostrar_region(titulos[i], productos[list(productos.keys())[i]])
+        mostrar_region(tab.label, region_keys[i])
 
 st.markdown("---")
-st.caption("Versión con todas las regiones y productos representativos integrados dinámicamente.")
+st.caption("Versión interconectada entre regiones, calcula importaciones/exportaciones reales y suma toda la demanda.")
