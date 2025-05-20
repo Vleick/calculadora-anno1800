@@ -1,5 +1,6 @@
 import streamlit as st
 import math
+import json
 
 st.set_page_config(page_title="Calculadora Anno 1800", layout="wide")
 st.title("🧮 Calculadora de Producción - Anno 1800 (Todas las regiones)")
@@ -13,70 +14,111 @@ Esta calculadora cubre las necesidades de producción para **todas las regiones*
 Incluye **interdependencias regionales**.
 """)
 
-# Función genérica de cálculo
-def calcular(consumo_por_hab, n_habs, prod_por_min):
+# =====================================
+# 🔽 Datos simulados (futura carga JSON)
+# =====================================
+productos = {
+    "viejo_mundo": {
+        "campesinos": {
+            "ropa de trabajo": {"consumo": 0.017, "produccion": 2, "emoji": "🧥"},
+            "pescado": {"consumo": 0.017, "produccion": 1, "emoji": "🐟"},
+            "schnapps": {"consumo": 0.017, "produccion": 1, "emoji": "🥔"},
+            "madera": {"consumo": 0.017, "produccion": 4, "emoji": "🪵"}
+        },
+        "obreros": {
+            "pan": {"consumo": 0.017, "produccion": 1, "emoji": "🍞"},
+            "salchichas": {"consumo": 0.017, "produccion": 1, "emoji": "🌭"},
+            "jabon": {"consumo": 0.0085, "produccion": 1, "emoji": "🧼"},
+            "cerveza": {"consumo": 0.0085, "produccion": 1, "emoji": "🍺"},
+            "vigas de acero": {"consumo": 0.0085, "produccion": 1, "emoji": "🔩"}
+        },
+        "artesanos": {
+            "conservas": {"consumo": 0.0085, "produccion": 1, "emoji": "🥫"},
+            "ventanas": {"consumo": 0.0085, "produccion": 1, "emoji": "🪟"},
+            "máquinas de coser": {"consumo": 0.0085, "produccion": 1, "emoji": "🧵"},
+            "abrigos de piel": {"consumo": 0.0085, "produccion": 1, "emoji": "🧥"}
+        },
+        "ingenieros": {
+            "café": {"consumo": 0.0085, "produccion": 0, "emoji": "☕", "importado_de": "nuevo_mundo"}
+        }
+    },
+    "nuevo_mundo": {
+        "jornaleros": {
+            "platano": {"consumo": 0.017, "produccion": 1, "emoji": "🍌"},
+            "café": {"consumo": 0.0085, "produccion": 1, "emoji": "☕"},
+            "algodón": {"consumo": 0.017, "produccion": 1, "emoji": "🧵"}
+        },
+        "obreros": {
+            "cacao": {"consumo": 0.0085, "produccion": 1, "emoji": "🍫"},
+            "ron": {"consumo": 0.0085, "produccion": 1, "emoji": "🥃"}
+        }
+    },
+    "enbesa": {
+        "ancianos": {
+            "injera": {"consumo": 0.017, "produccion": 1, "emoji": "🍽️"},
+            "hibisco": {"consumo": 0.0085, "produccion": 1, "emoji": "🌺"},
+            "teff": {"consumo": 0.017, "produccion": 1, "emoji": "🌾"}
+        },
+        "sabios": {
+            "linaza": {"consumo": 0.0085, "produccion": 1, "emoji": "🧵"},
+            "herramientas": {"consumo": 0.0085, "produccion": 0, "emoji": "🛠️", "importado_de": "viejo_mundo"}
+        }
+    },
+    "artico": {
+        "exploradores": {
+            "carne de foca": {"consumo": 0.017, "produccion": 1, "emoji": "🦭"},
+            "aceite": {"consumo": 0.017, "produccion": 1, "emoji": "🛢️"}
+        },
+        "tecnicos": {
+            "estufas": {"consumo": 0.0085, "produccion": 1, "emoji": "🔥"},
+            "abrigos": {"consumo": 0.0085, "produccion": 0, "emoji": "🧥", "importado_de": "viejo_mundo"}
+        }
+    }
+}
+
+# =====================================
+# 🔧 Función de cálculo genérico
+# =====================================
+def calcular(consumo_por_hab, n_habs, produccion):
+    if produccion == 0:
+        return n_habs * consumo_por_hab  # solo consumo si es importado
     total = n_habs * consumo_por_hab
-    return math.ceil(total / prod_por_min)
+    return math.ceil(total / produccion)
 
-# Tabs por región
-tab_vm, tab_nm, tab_enbesa, tab_artico = st.tabs(["🏙️ Viejo Mundo", "🌴 Nuevo Mundo", "🌞 Enbesa", "❄️ Ártico"])
+# =====================================
+# Tabs de regiones
+# =====================================
+tabs = st.tabs(["🏙️ Viejo Mundo", "🌴 Nuevo Mundo", "🌞 Enbesa", "❄️ Ártico"])
 
-# ================= VIEJO MUNDO ====================
-with tab_vm:
-    st.header("🏙️ Viejo Mundo")
-    campesinos = st.number_input("Campesinos", 0, step=100, value=200)
-    obreros = st.number_input("Obreros", 0, step=100, value=200)
-    artesanos = st.number_input("Artesanos", 0, step=100, value=200)
-    ingenieros = st.number_input("Ingenieros", 0, step=100, value=200)
+# Función general para cada región
+def mostrar_region(nombre_region, clases):
+    st.header(f"{nombre_region}")
+    poblaciones = {}
+    region_key = nombre_region.split(" ")[1].lower()
+    for clase in productos[region_key]:
+        poblaciones[clase] = st.number_input(f"{clase.capitalize()}", 0, step=100, value=200)
 
     st.subheader("Productos locales")
-    panaderias = calcular(0.017, obreros, 1)
-    st.write(f"🍞 Panaderías necesarias: {panaderias}")
+    for clase, productos_clase in productos[region_key].items():
+        for nombre, info in productos_clase.items():
+            if "importado_de" in info:
+                continue
+            cantidad = calcular(info["consumo"], poblaciones[clase], info["produccion"])
+            st.write(f"{info['emoji']} {nombre.capitalize()}: {cantidad}")
 
     st.subheader("Productos importados")
-    cafe = calcular(0.0085, ingenieros, 1)
-    st.write(f"☕ Café necesario (producido en el 🌴 Nuevo Mundo): {cafe} unidades/minuto")
+    for clase, productos_clase in productos[region_key].items():
+        for nombre, info in productos_clase.items():
+            if "importado_de" in info:
+                cantidad = calcular(info["consumo"], poblaciones[clase], 0)
+                origen = info.get("importado_de", "otra región")
+                st.write(f"{info['emoji']} {nombre.capitalize()} (de {origen.replace('_', ' ')}): {cantidad} unidades/minuto")
 
-# ================= NUEVO MUNDO ====================
-with tab_nm:
-    st.header("🌴 Nuevo Mundo")
-    jornaleros = st.number_input("Jornaleros", 0, step=100, value=200)
-    obreros_nuevo = st.number_input("Obreros (N. Mundo)", 0, step=100, value=200)
-
-    st.subheader("Productos locales")
-    cafe_nm = calcular(0.0085, jornaleros, 1)
-    st.write(f"☕ Plantaciones de café: {cafe_nm}")
-
-    st.subheader("Exportación")
-    st.write(f"🚢 Puedes exportar hasta {cafe_nm} unidades/minuto de café al 🏙️ Viejo Mundo")
-
-# ================= ENBESA ====================
-with tab_enbesa:
-    st.header("🌞 Enbesa")
-    ancianos = st.number_input("Ancianos", 0, step=100, value=200)
-    sabios = st.number_input("Sabios", 0, step=100, value=200)
-
-    st.subheader("Productos locales")
-    injera = calcular(0.017, ancianos, 1)
-    st.write(f"🍽️ Producción de Injera: {injera}")
-
-    st.subheader("Productos importados")
-    herramientas = calcular(0.0085, sabios, 1)
-    st.write(f"🛠️ Herramientas necesarias desde 🏙️ Viejo Mundo: {herramientas} unidades/minuto")
-
-# ================= ÁRTICO ====================
-with tab_artico:
-    st.header("❄️ Ártico")
-    exploradores = st.number_input("Exploradores", 0, step=100, value=200)
-    tecnicos = st.number_input("Técnicos", 0, step=100, value=200)
-
-    st.subheader("Productos locales")
-    aceite = calcular(0.017, exploradores, 1)
-    st.write(f"🛢️ Estufas de aceite: {aceite}")
-
-    st.subheader("Productos importados")
-    abrigos = calcular(0.0085, tecnicos, 1)
-    st.write(f"🧥 Abrigos importados desde 🌞 Enbesa o 🏙️ Viejo Mundo: {abrigos} unidades/minuto")
+# Mostrar cada región
+titulos = ["🏙️ Viejo Mundo", "🌴 Nuevo Mundo", "🌞 Enbesa", "❄️ Ártico"]
+for i, tab in enumerate(tabs):
+    with tab:
+        mostrar_region(titulos[i], productos[list(productos.keys())[i]])
 
 st.markdown("---")
-st.caption("Versión inicial multi-región con lógica interdependiente básica. Se puede expandir con nuevas cadenas, ratios personalizados y optimización por electricidad.")
+st.caption("Versión con todas las regiones y productos representativos integrados dinámicamente.")
